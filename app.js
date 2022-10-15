@@ -21,9 +21,40 @@ try{
 }catch(err){
     console.log(err);
 }
-/*app.post("/descifrar",(req,res)=>{
-    con.query(``)
-});*/
+app.post("/decode",(req,res)=>{
+    const parameters=req.body;
+    if(parameters.file_name==""||parameters.publicKey==""||parameters.texto==""){
+        res.redirect("/descifrar.html");
+    }else{
+        console.log(req.body);
+        con.query(`select * from mensajes where id="${parameters.publicKey}"`,(err,result)=>{
+            if(result.length==0){res.redirect("/")}else{
+            const textoDescifrado=cryptojs.AES.decrypt(parameters.texto,result[0].clave).toString(cryptojs.enc.Utf8);
+            res.send(`
+            <html>
+            <head></head>
+            <body>
+            <script>
+                function download(filename, text) {
+                    var element = document.createElement('a');
+                    element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+                    element.setAttribute('download', filename);
+                
+                    element.style.display = 'none';
+                    document.body.appendChild(element);
+                
+                    element.click();
+                
+                    document.body.removeChild(element);
+                }
+                download("descifrado.txt","${textoDescifrado}");
+                window.location.href="/";
+            </script>
+            </body>
+            </html>
+            `)}
+        });}
+});
 app.post("/cifrar",(req,res)=>{
     const parameters=req.body;
     if(parameters.emisor==""
@@ -32,7 +63,7 @@ app.post("/cifrar",(req,res)=>{
     || parameters.privateKey==""){
         res.redirect("index.html");
     }else{
-        const textoCifrado=cryptojs.AES.encrypt(parameters.texto,parameters.privateKey).toString();
+        const textoCifrado=cryptojs.AES.encrypt(`El presente ha sido enviado por: ${parameters.emisor}, `+parameters.texto,parameters.privateKey).toString();
         console.log(textoCifrado);
         con.query(`insert into mensajes values(?,?,?)`,[parameters.publicKey,parameters.emisor,parameters.privateKey],(err,result)=>{
             if(err){console.log(err)}else{
@@ -66,15 +97,12 @@ app.post("/cifrar",(req,res)=>{
             }
         });
         /*
-        var bytes  = CryptoJS.AES.decrypt(ciphertext, 'secret key 123');
-        var originalText = bytes.toString(CryptoJS.enc.Utf8);
-        const textoDescifrado=cryptojs.AES.decrypt(textoCifrado,parameters.privateKey).toString(cryptojs.enc.Utf8);
-        console.log(textoDescifrado);
+
         */
     }
 
 });
 const port=process.env.PORT||8000;
 app.listen(port,()=>{
-    console.log("server on port 8000")
+    console.log("server on port "+port);
 });
